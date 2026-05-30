@@ -1,0 +1,17 @@
+[Unit]
+Description=Farm Chores API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=farmchores
+Group=farmchores
+WorkingDirectory=/opt/farm-chores/app
+EnvironmentFile=/etc/farm-chores/farm-chores.env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

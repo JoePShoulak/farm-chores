@@ -1,127 +1,139 @@
 # Farm Chores
 
-Bare-bones React to-do list practice project.
+Bare-bones PERN to-do list practice project.
 
-## What is here
+## What Is Here
 
-- Add chores
-- Mark chores done
-- Edit chores
-- Delete chores
-- Small Node/Express API
-- PostgreSQL-backed test database
-- Shared Shoulak CSS copied into `public/assets/shoulak-ui/v1`
+- React frontend
+- Express API
+- PostgreSQL database
+- Add, edit, complete, and delete chores
+- Rack deploy scripts for HP1 and HP2
+- Hosted Shoulak styling from `https://shoulak.org/assets/shoulak-ui/v1/all.css`
 
-## What is intentionally not here yet
+## What Is Not Here
 
-- Authentication
+- Auth
 - Routing
-- Public `farm.shoulak.org` routing
+- Migrations framework
+- Docker
+- Complex state management
 
-Deployment target notes: this app is intended for HP1 and will eventually live under the farm subdomain on `shoulak.org`. The HP1/HP2 origin deploy exists; public domain routing is still a later step.
+## Env
 
-## Local development
+Use one local `.env` file for both local dev defaults and deploy settings:
 
 ```bash
-npm install
-mkdir -p .postgres-data
+cp .env.example .env
+npm run init:env
+```
+
+Keep `.env` out of git. It contains the local `DATABASE_URL` and the stable `APP_PASSWORD` used to configure HP2 and HP1.
+
+## Local Development
+
+Terminal 1, database:
+
+```bash
 npm run dev:db
 ```
 
-If PostgreSQL is installed but the commands are not on PATH in Git Bash, add
-the bin directory for the current terminal:
+Terminal 2, API:
 
 ```bash
-export PATH="/c/Program Files/PostgreSQL/18/bin:$PATH"
-```
-
-In another terminal:
-
-```bash
-npm run seed
 npm run dev:api
 ```
 
-In a third terminal:
+Terminal 3, frontend:
 
 ```bash
 npm run dev
 ```
 
-The default local database is `farm_chores_dev` on PostgreSQL at `127.0.0.1:55432`.
+Optional seed:
 
-Run a quick check before deploying:
+```bash
+npm run seed
+```
+
+Local PostgreSQL runs on `127.0.0.1:55432` by default. If PostgreSQL is installed but not on your Git Bash path:
+
+```bash
+export PATH="/c/Program Files/PostgreSQL/18/bin:$PATH"
+```
+
+## Checks
 
 ```bash
 npm run build
+curl -s http://127.0.0.1:3001/api/health
 ```
 
-## Production deployment
+## Production
 
-Production is split across HP hosts:
+- HP1 runs the frontend and API.
+- HP2 runs PostgreSQL.
+- Hypervisor routes `farm.shoulak.org` to HP1 port `5102`.
 
-- HP1 runs the Farm Chores frontend and backend.
-- HP2 runs PostgreSQL for shared project databases.
-- Farm Chores uses the `farm_chores` database and `farm_chores_app` PostgreSQL user.
-
-First-time full deployment:
+Full production deploy:
 
 ```bash
-APP_PASSWORD="$(openssl rand -base64 32)"
-
-printf 'APP_PASSWORD=%s\n' "$APP_PASSWORD"
-
-APP_PASSWORD="$APP_PASSWORD" npm run deploy:prod
+npm run deploy:prod
 ```
 
-Save those passwords somewhere private. The app password is used by HP1 to connect
-to PostgreSQL on HP2.
-
-If HP2 PostgreSQL is already configured and you are only changing app code:
+First-time HP1 setup:
 
 ```bash
-APP_PASSWORD="saved app password" npm run deploy:hp1
+npm run bootstrap:hp1
 ```
 
-If HP1 is already configured and you only need to redeploy code:
+Only update HP2 database/user/password:
+
+```bash
+npm run deploy:db:hp2
+```
+
+Only update HP1 database config:
+
+```bash
+npm run deploy:config:hp1
+```
+
+Deploy app code to HP1:
 
 ```bash
 npm run deploy:hp1
 ```
 
-If you only need to update HP1's production database config:
+Production smoke test:
 
 ```bash
-APP_PASSWORD="saved app password" npm run deploy:config:hp1
+curl -s https://farm.shoulak.org/api/health
+curl -s https://farm.shoulak.org/api/chores
 ```
 
-If HP1 needs first-time system setup:
+Expected empty database response:
+
+```json
+{"ok":true,"database":true}
+[]
+```
+
+## Notes
+
+- Do not regenerate `APP_PASSWORD` unless you intend to rotate credentials.
+- HP2 grants DB access only to HP1 when `ufw` is active.
+- Deploys are intended to be passwordless after the one-time HP1/HP2 bootstraps:
 
 ```bash
-APP_PASSWORD="saved app password" npm run bootstrap:hp1
+npm run deploy:auth-check
 ```
 
-If only the HP2 database needs setup:
+- If HP2's DB deploy helper ever needs to be refreshed:
 
 ```bash
-APP_PASSWORD="saved app password" npm run deploy:db:hp2
+npm run bootstrap:db:hp2
 ```
 
-To build the HP1 deploy archive without sending it:
-
-```bash
-npm run package:hp1
-```
-
-Use `.env.hp2.example` as the backend environment shape when manually inspecting
-the production configuration.
-
-Gotchas before treating HP2 as real infrastructure:
-
-- Backups are not configured yet.
-- PostgreSQL is opened only to HP1 by the setup script when `ufw` is active.
-- Each future project should get its own database and PostgreSQL user.
-- Do not reuse the local `farm_chores_dev` database name in production.
-- Keep PostgreSQL credentials in server environment files, not in Hypervisor.
-- Do not rerun HP2 setup with random new passwords unless you intend to rotate
-  credentials and update HP1 to match.
+- Each future rack app should get its own PostgreSQL database and user.
+- Backups are still outside this app and should be handled at the HP2/database level.

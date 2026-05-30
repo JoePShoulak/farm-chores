@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+rm -f /etc/nginx/sites-enabled/farm-chores
+systemctl disable --now farm-chores-api.service
+nginx -t
+systemctl reload nginx

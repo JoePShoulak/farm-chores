@@ -1,0 +1,36 @@
+{
+  "name": "farm_chores",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:db": "bash deploy/local-postgres.sh",
+    "dev:api": "node server/index.js",
+    "bootstrap:hp1": "bash deploy/manage.sh bootstrap",
+    "bootstrap:db:hp2": "bash deploy/hp2-postgres.sh --bootstrap",
+    "init:env": "bash deploy/init-env.sh",
+    "deploy:hp1": "bash deploy/manage.sh deploy",
+    "deploy:config:hp1": "bash deploy/manage.sh config",
+    "deploy:auth-check": "bash deploy/manage.sh auth-check",
+    "package:hp1": "bash deploy/manage.sh package",
+    "deploy:db:hp2": "bash deploy/hp2-postgres.sh",
+    "deploy:prod": "bash deploy/production.sh",
+    "seed": "node server/seed.js",
+    "start": "node server/index.js",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.1",
+    "pg": "^8.16.3",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.12"
+  }
+}
