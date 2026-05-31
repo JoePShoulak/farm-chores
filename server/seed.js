@@ -4,6 +4,10 @@ import { closeDb } from "./db.js";
 import { logEvent, serializeError } from "./logger.js";
 import { ensureStore, resetSeedChores } from "./store.js";
 
+// Seed script
+//
+// This is a one-shot dev helper, not part of the running API. It prepares the
+// selected store, replaces chores with starter data, and closes the DB pool.
 try {
   logEvent("seed.connecting");
 

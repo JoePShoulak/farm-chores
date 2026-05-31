@@ -1,7 +1,9 @@
 import { ensureSchema, query } from "./db.js";
 
-const dataMode = process.env.FARM_CHORES_DATA_MODE || "postgres";
-
+// Mock data
+//
+// This in-memory list backs `npm run dev:api:mock`. It resets whenever the API
+// process restarts and deliberately does not touch local or remote Postgres.
 let mockChores = [
   { id: 1, text: "Feed chickens", done: false },
   { id: 2, text: "Check water trough", done: false },
@@ -9,6 +11,7 @@ let mockChores = [
 ];
 let nextMockId = 4;
 
+// Converts database/mock records into the API shape consumed by the React app.
 function formatChore(chore) {
   return {
     id: chore.id.toString(),
@@ -17,24 +20,40 @@ function formatChore(chore) {
   };
 }
 
+// Mode helpers
+//
+// The store reads mode dynamically so `server/index.js --mock` can set it before
+// the first request without needing a separate server entry file.
+
+// Returns the active data mode: `postgres` by default, or `mock` for no-db dev.
 export function storeMode() {
-  return dataMode;
+  return process.env.FARM_CHORES_DATA_MODE || "postgres";
 }
 
+// Tells health checks whether this process expects a real database.
 export function usesDatabase() {
-  return dataMode !== "mock";
+  return storeMode() !== "mock";
 }
 
+// Store lifecycle
+
+// Prepares the selected data store before routes use it.
 export async function ensureStore() {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     return;
   }
 
   await ensureSchema();
 }
 
+// Chore operations
+//
+// Each exported operation mirrors one API capability and hides the storage
+// choice from `index.js`.
+
+// Returns every chore in stable display order.
 export async function listChores() {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     return mockChores.map(formatChore);
   }
 
@@ -45,8 +64,9 @@ export async function listChores() {
   return result.rows.map(formatChore);
 }
 
+// Creates a new undone chore and returns it in API format.
 export async function createChore(text) {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     const chore = { id: nextMockId, text, done: false };
     nextMockId += 1;
     mockChores.push(chore);
@@ -61,8 +81,9 @@ export async function createChore(text) {
   return formatChore(result.rows[0]);
 }
 
+// Applies text and/or done changes to an existing chore.
 export async function updateChore(id, updates) {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     const chore = mockChores.find((item) => item.id === id);
 
     if (!chore) {
@@ -102,8 +123,9 @@ export async function updateChore(id, updates) {
   return result.rows[0] ? formatChore(result.rows[0]) : null;
 }
 
+// Removes a chore. Deleting a missing id is treated as a successful no-op.
 export async function deleteChore(id) {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     mockChores = mockChores.filter((chore) => chore.id !== id);
     return;
   }
@@ -111,8 +133,9 @@ export async function deleteChore(id) {
   await query("delete from chores where id = $1", [id]);
 }
 
+// Resets chores to starter dev data for `npm run seed`.
 export async function resetSeedChores() {
-  if (dataMode === "mock") {
+  if (storeMode() === "mock") {
     mockChores = [
       { id: 1, text: "Feed chickens", done: false },
       { id: 2, text: "Check water trough", done: false },

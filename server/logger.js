@@ -2,10 +2,15 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+// Logging target
+//
+// In deploy, FARM_CHORES_LOG points at the service jsonl log file. Locally, logs
+// still go to stdout even when no file path is configured.
 const logPath = process.env.FARM_CHORES_LOG || process.env.APP_LOG;
 const service = process.env.SERVICE_NAME || "farm_chores";
 const hostname = os.hostname();
 
+// Recursively redacts sensitive-looking fields before they hit disk/stdout.
 function redact(value) {
   if (!value || typeof value !== "object") {
     return value;
@@ -23,6 +28,7 @@ function redact(value) {
   );
 }
 
+// Emits one structured event for humans and service tooling to read.
 export function logEvent(event, fields = {}) {
   const payload = {
     ts: new Date().toISOString(),
@@ -41,6 +47,7 @@ export function logEvent(event, fields = {}) {
   process.stdout.write(`${line}\n`);
 }
 
+// Converts thrown values into a consistent JSON-safe error object.
 export function serializeError(error) {
   return {
     name: error?.name || "Error",
