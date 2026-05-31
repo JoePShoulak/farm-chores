@@ -11,7 +11,7 @@ no database, full local, and full rack deploy.
 - No-db mock API mode for UI and logic work
 - Add, edit, complete, and delete chores
 - Rack deploy scripts for HP1 and HP2
-- HP4-backed Shoulak styling from `/hp4-assets/shoulak-ui/v1/all.css`
+- HP4-backed Shoulak styling imported from `src/styles.css`
 
 ## What Is Not Here
 

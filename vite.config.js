@@ -13,8 +13,12 @@ const SHARED_ASSET_FALLBACK_ROOT =
     "../hypervisor/frontend/public/assets",
   );
 
+const HP4_ASSET_IMPORT = "/hp4-assets/shoulak-ui/v1/all.css";
+const HP4_ASSET_IMPORT_PLACEHOLDER =
+  "https://farm-chores.local.invalid/hp4-assets/shoulak-ui/v1/all.css";
+
 export default defineConfig({
-  plugins: [react(), sharedAssetFallback()],
+  plugins: [react(), runtimeCssImports(), sharedAssetFallback()],
   server: {
     proxy: {
       "/api": "http://127.0.0.1:3001",
@@ -26,6 +30,34 @@ export default defineConfig({
     },
   },
 });
+
+function runtimeCssImports() {
+  return {
+    name: "runtime-css-imports",
+    enforce: "pre",
+    // Vite resolves root-relative CSS @imports as filesystem paths during
+    // build. Treat this import as external, then restore the runtime URL.
+    transform(code, id) {
+      if (!id.endsWith(".css") || !code.includes(HP4_ASSET_IMPORT)) {
+        return null;
+      }
+
+      return code.replaceAll(HP4_ASSET_IMPORT, HP4_ASSET_IMPORT_PLACEHOLDER);
+    },
+    generateBundle(options, bundle) {
+      for (const asset of Object.values(bundle)) {
+        if (asset.type !== "asset" || typeof asset.source !== "string") {
+          continue;
+        }
+
+        asset.source = asset.source.replaceAll(
+          HP4_ASSET_IMPORT_PLACEHOLDER,
+          HP4_ASSET_IMPORT,
+        );
+      }
+    },
+  };
+}
 
 function contentTypeForAsset(assetPath) {
   if (assetPath.endsWith(".css")) {
