@@ -8,6 +8,20 @@ DB_PASSWORD="${DB_PASSWORD:-farm_chores_dev}"
 PORT="${POSTGRES_PORT:-55432}"
 
 if ! command -v initdb >/dev/null 2>&1 || ! command -v postgres >/dev/null 2>&1; then
+  for postgres_bin in \
+    "/c/Program Files/PostgreSQL/18/bin" \
+    "/c/Program Files/PostgreSQL/17/bin" \
+    "/c/Program Files/PostgreSQL/16/bin" \
+    "/c/Program Files/PostgreSQL/15/bin"
+  do
+    if [[ -x "$postgres_bin/initdb.exe" && -x "$postgres_bin/postgres.exe" ]]; then
+      export PATH="$postgres_bin:$PATH"
+      break
+    fi
+  done
+fi
+
+if ! command -v initdb >/dev/null 2>&1 || ! command -v postgres >/dev/null 2>&1; then
   cat >&2 <<EOF
 PostgreSQL tools are not on PATH.
 

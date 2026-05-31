@@ -9,6 +9,7 @@ install -d -m 0750 -o root -g root /etc/farm-chores
 if [[ ! -f /etc/farm-chores/farm-chores.env ]]; then
   install -m 0640 -o root -g root /dev/null /etc/farm-chores/farm-chores.env
 fi
+install -d -m 0755 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /var/log/farm-chores
 
 install -m 0644 "$APP_DIR/deploy/ubuntu/farm-chores-api.service" /etc/systemd/system/farm-chores-api.service
 install -m 0644 "$APP_DIR/deploy/ubuntu/farm-chores.nginx" /etc/nginx/sites-available/farm-chores

@@ -2,13 +2,38 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 
-import { ensureSchema, query } from "./db.js";
+import { logEvent, serializeError } from "./logger.js";
+import {
+  createChore,
+  deleteChore,
+  ensureStore,
+  listChores,
+  storeMode,
+  updateChore,
+  usesDatabase,
+} from "./store.js";
 
 const app = express();
 const port = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use((request, response, next) => {
+  const startedAt = process.hrtime.bigint();
+
+  response.on("finish", () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    logEvent("http.request", {
+      method: request.method,
+      path: request.path,
+      status_code: response.statusCode,
+      duration_ms: Math.round(durationMs),
+      remote_addr: request.ip,
+    });
+  });
+
+  next();
+});
 
 function asyncHandler(handler) {
   return async (request, response, next) => {
@@ -20,14 +45,6 @@ function asyncHandler(handler) {
   };
 }
 
-function formatChore(chore) {
-  return {
-    id: chore.id.toString(),
-    text: chore.text,
-    done: Boolean(chore.done),
-  };
-}
-
 let schemaReady = false;
 
 async function ensureReady() {
@@ -35,23 +52,24 @@ async function ensureReady() {
     return;
   }
 
-  await ensureSchema();
+  await ensureStore();
   schemaReady = true;
 }
 
 ensureReady().catch((error) => {
-  console.error("Could not initialize database schema.", error);
+  logEvent("database.schema_error", { error: serializeError(error) });
 });
 
 app.get("/api/health", asyncHandler(async (request, response) => {
   try {
     await ensureReady();
-    response.json({ ok: true, database: true });
+    response.json({ ok: true, database: usesDatabase(), dataMode: storeMode() });
   } catch (error) {
-    console.error("Health check failed.", error);
+    logEvent("health.database_error", { error: serializeError(error) });
     response.status(503).json({
       ok: false,
-      database: false,
+      database: usesDatabase(),
+      dataMode: storeMode(),
       error: error.message || "Database unavailable.",
     });
   }
@@ -59,11 +77,7 @@ app.get("/api/health", asyncHandler(async (request, response) => {
 
 app.get("/api/chores", asyncHandler(async (request, response) => {
   await ensureReady();
-  const result = await query(
-    "select id, text, done from chores order by created_at asc, id asc",
-  );
-
-  response.json(result.rows.map(formatChore));
+  response.json(await listChores());
 }));
 
 app.post("/api/chores", asyncHandler(async (request, response) => {
@@ -75,12 +89,7 @@ app.post("/api/chores", asyncHandler(async (request, response) => {
     return;
   }
 
-  const result = await query(
-    "insert into chores (text) values ($1) returning id, text, done",
-    [text],
-  );
-
-  response.status(201).json(formatChore(result.rows[0]));
+  response.status(201).json(await createChore(text));
 }));
 
 app.patch("/api/chores/:id", asyncHandler(async (request, response) => {
@@ -92,8 +101,7 @@ app.patch("/api/chores/:id", asyncHandler(async (request, response) => {
     return;
   }
 
-  const updates = [];
-  const values = [];
+  const updates = {};
 
   if (typeof request.body?.text === "string") {
     const text = request.body.text.trim();
@@ -101,32 +109,26 @@ app.patch("/api/chores/:id", asyncHandler(async (request, response) => {
       response.status(400).json({ error: "Chore text is required." });
       return;
     }
-    values.push(text);
-    updates.push(`text = $${values.length}`);
+    updates.text = text;
   }
 
   if (typeof request.body?.done === "boolean") {
-    values.push(request.body.done);
-    updates.push(`done = $${values.length}`);
+    updates.done = request.body.done;
   }
 
-  if (!updates.length) {
+  if (!Object.keys(updates).length) {
     response.status(400).json({ error: "No updates provided." });
     return;
   }
 
-  values.push(id);
-  const result = await query(
-    `update chores set ${updates.join(", ")} where id = $${values.length} returning id, text, done`,
-    values,
-  );
+  const updatedChore = await updateChore(id, updates);
 
-  if (!result.rows[0]) {
+  if (!updatedChore) {
     response.status(404).json({ error: "Chore not found." });
     return;
   }
 
-  response.json(formatChore(result.rows[0]));
+  response.json(updatedChore);
 }));
 
 app.delete("/api/chores/:id", asyncHandler(async (request, response) => {
@@ -138,16 +140,20 @@ app.delete("/api/chores/:id", asyncHandler(async (request, response) => {
     return;
   }
 
-  await query("delete from chores where id = $1", [id]);
+  await deleteChore(id);
 
   response.status(204).end();
 }));
 
 app.use((error, request, response, next) => {
-  console.error(error);
+  logEvent("http.error", {
+    method: request.method,
+    path: request.path,
+    error: serializeError(error),
+  });
   response.status(500).json({ error: "Something went wrong." });
 });
 
 app.listen(port, () => {
-  console.log(`Farm Chores API listening on http://127.0.0.1:${port}`);
+  logEvent("server.started", { url: `http://127.0.0.1:${port}` });
 });

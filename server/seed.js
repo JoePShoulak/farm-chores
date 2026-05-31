@@ -1,24 +1,21 @@
 import "dotenv/config";
 
-import { closeDb, ensureSchema, query } from "./db.js";
+import { closeDb } from "./db.js";
+import { logEvent, serializeError } from "./logger.js";
+import { ensureStore, resetSeedChores } from "./store.js";
 
 try {
-  console.log("Connecting to PostgreSQL...");
+  logEvent("seed.connecting");
 
-  await ensureSchema();
+  await ensureStore();
 
-  console.log("Resetting chores...");
+  logEvent("seed.resetting");
 
-  await query("delete from chores");
-  await query(
-    "insert into chores (text, done) values ($1, false), ($2, false)",
-    ["Feed chickens", "Check water trough"],
-  );
+  await resetSeedChores();
 
-  console.log("Seeded farm_chores_dev.");
+  logEvent("seed.complete");
 } catch (error) {
-  console.error("Could not seed PostgreSQL.");
-  console.error(error.message);
+  logEvent("seed.error", { error: serializeError(error) });
   process.exitCode = 1;
 } finally {
   await closeDb();

@@ -9,6 +9,7 @@ User=farmchores
 Group=farmchores
 WorkingDirectory=/opt/farm-chores/app
 EnvironmentFile=/etc/farm-chores/farm-chores.env
+Environment=FARM_CHORES_LOG=/var/log/farm-chores/api.jsonl
 ExecStart=/usr/bin/node server/index.js
 Restart=always
 RestartSec=5

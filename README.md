@@ -9,7 +9,7 @@ Bare-bones PERN to-do list practice project.
 - PostgreSQL database
 - Add, edit, complete, and delete chores
 - Rack deploy scripts for HP1 and HP2
-- Hosted Shoulak styling from `https://shoulak.org/assets/shoulak-ui/v1/all.css`
+- HP4-backed Shoulak styling from `/hp4-assets/shoulak-ui/v1/all.css`
 
 ## What Is Not Here
 
@@ -31,6 +31,8 @@ npm run init:env
 Keep `.env` out of git. It contains the local `DATABASE_URL` and the stable `APP_PASSWORD` used to configure HP2 and HP1.
 
 ## Local Development
+
+### Full Local
 
 Terminal 1, database:
 
@@ -60,6 +62,47 @@ Local PostgreSQL runs on `127.0.0.1:55432` by default. If PostgreSQL is installe
 
 ```bash
 export PATH="/c/Program Files/PostgreSQL/18/bin:$PATH"
+```
+
+The local DB helper also checks common Windows PostgreSQL install paths automatically.
+
+### No DB
+
+Terminal 1, mock API:
+
+```bash
+npm run dev:api:mock
+```
+
+Terminal 2, frontend:
+
+```bash
+npm run dev
+```
+
+The mock API keeps chores in memory for that API process. It is meant for testing logic and aesthetics without local or remote PostgreSQL.
+
+### Command Map
+
+No DB:
+
+```bash
+npm run dev:api:mock
+npm run dev
+```
+
+Full local:
+
+```bash
+npm run dev:db
+npm run dev:api
+npm run dev
+```
+
+Full deploy:
+
+```bash
+npm run deploy:prod
 ```
 
 ## Checks
